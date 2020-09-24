@@ -21,8 +21,8 @@ struct rofi_arm
             rofis.push_back( RoFI::getRemoteRoFI( i ) );
 
             joints.push_back( { RoFI::getRemoteRoFI( i ).getJoint( 0 ),
-                                   RoFI::getRemoteRoFI( i ).getJoint( 1 ),
-                                   RoFI::getRemoteRoFI( i ).getJoint( 2 ) } );
+                                RoFI::getRemoteRoFI( i ).getJoint( 1 ),
+                                RoFI::getRemoteRoFI( i ).getJoint( 2 ) } );
         }
     }
 };
@@ -30,8 +30,9 @@ struct rofi_arm
 void parseInput(rofi_arm arm){
     char c;
 
-    double max = arm.joints[ 0 ][ 0 ].maxPosition();
-    double min = arm.joints[ 0 ][ 0 ].minPosition();
+    double maxPos = arm.joints[ 0 ][ 0 ].maxPosition();
+    // double minPos = arm.joints[ 0 ][ 0 ].minPosition();
+    double maxSpeed = arm.joints[ 0 ][ 0 ].maxSpeed();
 
     double newPos = 0;
 
@@ -43,25 +44,24 @@ void parseInput(rofi_arm arm){
 
         switch( c ){
             case 'w':
-                newPos = std::clamp( arm.joints[ 0 ][ 1 ].getPosition() + 0.1, min, max );
-                arm.joints[ 0 ][ 1 ].setPosition( newPos, 1.0, [ & ]( Joint ){ promise.set_value(); } );
+                newPos = std::clamp( arm.joints[ 0 ][ 1 ].getPosition() + 0.1, 0.0, maxPos );
+                arm.joints[ 0 ][ 1 ].setPosition( newPos, maxSpeed, [ & ]( Joint ){ promise.set_value(); } );
                 break;
             case 's':
-                newPos = std::clamp( arm.joints[ 0 ][ 1 ].getPosition() - 0.1, min, max );
-                arm.joints[ 0 ][ 1 ].setPosition( newPos, 1.0, [ & ]( Joint ){ promise.set_value(); } );
+                newPos = std::clamp( arm.joints[ 0 ][ 1 ].getPosition() - 0.1, 0.0, maxPos );
+                arm.joints[ 0 ][ 1 ].setPosition( newPos, maxSpeed, [ & ]( Joint ){ promise.set_value(); } );
                 break;
             case 'a':
-                newPos = std::clamp( arm.joints[ 0 ][ 2 ].getPosition() - 0.1, - M_PI / 2, M_PI / 2 );
-                arm.joints[ 0 ][ 2 ].setPosition( newPos, 1.0, [ & ]( Joint ){ promise.set_value(); } );
+                newPos = std::clamp( arm.joints[ 0 ][ 2 ].getPosition() + 0.1, - M_PI / 2, M_PI / 2 );
+                arm.joints[ 0 ][ 2 ].setPosition( newPos, maxSpeed, [ & ]( Joint ){ promise.set_value(); } );
                 break;
             case 'd':
-                newPos = std::clamp( arm.joints[ 0 ][ 2 ].getPosition() + 0.1, - M_PI / 2, M_PI / 2 );
-                arm.joints[ 0 ][ 2 ].setPosition( newPos, 1.0, [ & ]( Joint ){ promise.set_value(); } );
+                newPos = std::clamp( arm.joints[ 0 ][ 2 ].getPosition() - 0.1, - M_PI / 2, M_PI / 2 );
+                arm.joints[ 0 ][ 2 ].setPosition( newPos, maxSpeed, [ & ]( Joint ){ promise.set_value(); } );
                 break;
             default:
                 continue;
         }
-        future.wait();
         future.get();
 
 	} while( c != 'q' );
@@ -74,8 +74,9 @@ int main()
 
     rofi_arm arm( 3 );
 
-    float max = arm.joints[ 0 ][ 0 ].maxPosition();
-    float min = arm.joints[ 0 ][ 0 ].minPosition();
+    double maxPos = arm.joints[ 0 ][ 0 ].maxPosition();
+    double minPos = arm.joints[ 0 ][ 0 ].minPosition();
+    double maxSpeed = arm.joints[ 0 ][ 0 ].maxSpeed();
 
     // unbuffer terminal input to control the arm
     struct termios old_tio, new_tio;
@@ -95,18 +96,19 @@ int main()
         std::this_thread::sleep_for( std::chrono::seconds( 1 ));
     }
 
-    arm.joints[ 0 ][ 0 ].setPosition( max / 2, 1.0, [ & ]( Joint ){
-        arm.joints[ 0 ][ 0 ].setPosition( max, 1.0, [ & ]( Joint ){ promise1.set_value(); } );
+    arm.joints[ 0 ][ 0 ].setPosition( maxPos / 2, maxSpeed, [ & ]( Joint ){
+        arm.joints[ 0 ][ 0 ].setPosition( maxPos, maxSpeed, [ & ]( Joint ){ promise1.set_value(); } );
     } );
-    arm.joints[ 0 ][ 1 ].setPosition( min / 2, 1.0, [ & ]( Joint ){
-        arm.joints[ 0 ][ 1 ].setPosition( 0, 1.0, [ & ]( Joint ){ promise2.set_value(); } );
+    arm.joints[ 0 ][ 1 ].setPosition( minPos / 2, maxSpeed, [ & ]( Joint ){
+        arm.joints[ 0 ][ 1 ].setPosition( 0, maxSpeed, [ & ]( Joint ){ promise2.set_value(); } );
     } );
-    arm.joints[ 1 ][ 0 ].setPosition( min / 2, 1.0, [ & ]( Joint ){
-        arm.joints[ 1 ][ 0 ].setPosition( min, 1.0, [ & ]( Joint ){ promise3.set_value(); } );
+    arm.joints[ 1 ][ 0 ].setPosition( minPos / 2, maxSpeed, [ & ]( Joint ){
+        arm.joints[ 1 ][ 0 ].setPosition( minPos, maxSpeed, [ & ]( Joint ){ promise3.set_value(); } );
     } );
-    arm.joints[ 1 ][ 1 ].setPosition( min / 2, 1.0, [ & ]( Joint ){
-        arm.joints[ 1 ][ 1 ].setPosition( min, 1.0, [ & ]( Joint ){ promise4.set_value(); } );
+    arm.joints[ 1 ][ 1 ].setPosition( minPos / 2, maxSpeed, [ & ]( Joint ){
+        arm.joints[ 1 ][ 1 ].setPosition( minPos, maxSpeed, [ & ]( Joint ){ promise4.set_value(); } );
     } );
+    arm.joints[ 2 ][ 0 ].setPosition( -0.1, maxSpeed, nullptr );
   
     future1.get();
     future2.get();
@@ -116,4 +118,6 @@ int main()
     parseInput( arm );
 
 	tcsetattr( STDIN_FILENO, TCSANOW, &old_tio );
+    
+    return 0;
 }

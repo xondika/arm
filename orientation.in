@@ -1,0 +1,10 @@
+# trying to connect modules with different orientation causes weird behavior
+
+C 0 0 0.043 -90 0 0
+
+M 1 0 0 0
+M 2 0 0 0
+M 3 0 0 0
+
+E 1 1 2 S 2 0 2
+E 2 1 2 E 2 0 3
